@@ -1,5 +1,7 @@
 flask
 numpy<2
-scikit-learn==1.6.1
+scikit-learn==1.5.2
 rdkit-pypi
 gunicorn
+chembl_webresource_client
+pandas
