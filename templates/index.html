@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drug Activity Predictor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            color: white;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; margin-bottom: 8px; }
+        .header p { color: rgba(255,255,255,0.6); font-size: 0.95rem; }
+
+        .input-group { margin-bottom: 20px; }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #6c63ff;
+        }
+
+        .input-group input::placeholder { color: rgba(255,255,255,0.3); }
+
+        .examples {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .examples span {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            align-self: center;
+        }
+
+        .example-btn {
+            padding: 6px 14px;
+            background: rgba(108, 99, 255, 0.2);
+            border: 1px solid rgba(108, 99, 255, 0.4);
+            border-radius: 20px;
+            color: #a89fff;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: rgba(108, 99, 255, 0.4);
+            color: white;
+        }
+
+        .predict-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6c63ff, #3b82f6);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .predict-btn:hover { opacity: 0.9; }
+        .predict-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .result {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result.active {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .result.inactive {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .result h3 { font-size: 1.2rem; margin-bottom: 16px; }
+        .result.active h3 { color: #4ade80; }
+        .result.inactive h3 { color: #f87171; }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .metric {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric .label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .result.active .metric .value { color: #4ade80; }
+        .result.inactive .metric .value { color: #f87171; }
+
+        .smiles-display {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            word-break: break-all;
+        }
+
+        .error {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #f87171;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            margin-top: 16px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <h1>🧬 Drug Activity Predictor</h1>
+            <p>Predicts activity against <em>Plasmodium falciparum</em> (Malaria)</p>
+        </div>
+
+        <div class="input-group">
+            <label>Enter a SMILES string</label>
+            <input type="text" id="smiles" placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O" />
+        </div>
+
+        <div class="examples">
+            <span>Try:</span>
+            <button class="example-btn" onclick="setExample('CC(=O)Oc1ccccc1C(=O)O')">Aspirin</button>
+            <button class="example-btn" onclick="setExample('CCN(CC)CCCC(C)Nc1ccnc2cc(Cl)ccc12')">Chloroquine</button>
+            <button class="example-btn" onclick="setExample('COc1ccc2nccc([C@@H](O)[C@H]3C[C@@H]4CC[N@]3C[C@@H]4C=C)c2c1')">Quinine</button>
+        </div>
+
+        <button class="predict-btn" onclick="predict()">🔍 Predict</button>
+
+        <div class="loader" id="loader">Analyzing compound...</div>
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <h3 id="result-title"></h3>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="value" id="active-prob"></div>
+                    <div class="label">Active Probability</div>
+                </div>
+                <div class="metric">
+                    <div class="value" id="inactive-prob"></div>
+                    <div class="label">Inactive Probability</div>
+                </div>
+            </div>
+            <div class="smiles-display" id="smiles-display"></div>
+        </div>
+
+        <div class="footer">
+            Built with RDKit + Scikit-learn + Flask | Data from ChEMBL
+        </div>
+    </div>
+
+    <script>
+        function setExample(smiles) {
+            document.getElementById('smiles').value = smiles;
+        }
+
+        async function predict() {
+            const smiles = document.getElementById('smiles').value.trim();
+            if (!smiles) {
+                showError('Please enter a SMILES string first.');
+                return;
+            }
+
+            const btn = document.querySelector('.predict-btn');
+            const loader = document.getElementById('loader');
+            const error = document.getElementById('error');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            loader.style.display = 'block';
+            error.style.display = 'none';
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ smiles })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResult(data, smiles);
+                }
+            } catch (err) {
+                showError('Something went wrong. Please try again.');
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        function showResult(data, smiles) {
+            const result = document.getElementById('result');
+            const isActive = data.prediction === 'ACTIVE';
+
+            result.className = 'result ' + (isActive ? 'active' : 'inactive');
+            document.getElementById('result-title').textContent =
+                isActive ? '✅ ACTIVE — Likely active against malaria'
+                         : '❌ INACTIVE — Unlikely to be active';
+
+            document.getElementById('active-prob').textContent = data.active_prob + '%';
+            document.getElementById('inactive-prob').textContent = data.inactive_prob + '%';
+            document.getElementById('smiles-display').textContent = smiles;
+
+            result.style.display = 'block';
+        }
+
+        function showError(msg) {
+            const error = document.getElementById('error');
+            error.textContent = msg;
+            error.style.display = 'block';
+        }
+
+        // Allow Enter key to trigger prediction
+        document.getElementById('smiles').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') predict();
+        });
+    </script>
+</body>
+</html>
